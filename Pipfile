@@ -1,0 +1,20 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+pytelegrambotapi = "==4.6.1"
+selenium = "==4.3.0"
+beautifulsoup4 = "==4.11.1"
+lxml = "==4.9.1"
+loguru = "==0.6.0"
+
+[dev-packages]
+mypy = "*"
+coverage = "*"
+flake8 = "*"
+autopep8 = "*"
+
+[requires]
+python_version = "3.11"
