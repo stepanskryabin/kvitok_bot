@@ -1,3 +1,4 @@
+from typing import Any
 from selenium.webdriver import Chrome
 from selenium.webdriver import ChromeOptions
 from selenium.webdriver.common.by import By
@@ -6,31 +7,9 @@ import requests
 from requests.cookies import RequestsCookieJar
 
 from src.parser.models import Cookies, UserInformation
-from src.settings.config import LOGIN
-from src.settings.config import PASSWORD
 from src.settings.config import BROWSER_DRIVER
 from src.settings.config import BROWSER_TIME
 from src.settings.config import URL
-
-
-def manager() -> str | bool:
-    options = ChromeOptions()
-    options.headless = False
-    browser = Chrome(executable_path="./chromedriver",
-                     options=options)
-    browser.implicitly_wait(10)
-    browser.get("https://lk.xn--b1ajducdqh2g.xn--p1ai/cabinet.html")
-    browser.find_element(by=By.ID, value="lic").clear()
-    browser.find_element(by=By.ID, value="lic").send_keys(LOGIN)
-    browser.find_element(by=By.ID, value="password").clear()
-    browser.find_element(by=By.ID, value="password").send_keys(PASSWORD)
-    browser.find_element(by=By.XPATH,
-                         value="//input[@type='submit']").click()
-    cookies = browser.get_cookie('SESSIONID')
-    if cookies is not None:
-        return cookies["value"]
-    else:
-        return False
 
 
 class Parser:
@@ -59,15 +38,17 @@ class Parser:
 
     def _login(self) -> Cookies:
         login_xpath = "//input[@type='submit']"
-
-        self.browser.find_element(by=By.ID,
-                                  value="lic").clear()
-        self.browser.find_element(by=By.ID,
-                                  value="lic").send_keys(self.login)
-        self.browser.find_element(by=By.ID,
-                                  value="password").clear()
-        self.browser.find_element(by=By.ID,
-                                  value="password").send_keys(self.password)
+        page = "cabinet.html"
+        url = "".join((self.url, page))
+        self.browser.get(url)
+        self.browser.find_element(by=By.CSS_SELECTOR,
+                                  value='[name="username"]').clear()
+        self.browser.find_element(by=By.CSS_SELECTOR,
+                                  value='[name="username"]').send_keys(self.login)
+        self.browser.find_element(by=By.CSS_SELECTOR,
+                                  value='[name="password"]').clear()
+        self.browser.find_element(by=By.CSS_SELECTOR,
+                                  value='[name="password"]').send_keys(self.password)
         self.browser.find_element(by=By.XPATH,
                                   value=login_xpath).click()
         cookies = self.browser.get_cookie('SESSIONID')
@@ -77,10 +58,6 @@ class Parser:
         self.cookies.path = cookies.get('path')
         self.cookies.secure = cookies.get('secure')
         self.cookies.value = cookies.get('value')
-
-    def _page_cabinet(self):
-        page = "cabinet.html"
-        self._get(self.url, page)
 
     def _page_info(self) -> BeautifulSoup:
         page = "cabinet.html?page=info"
@@ -112,31 +89,20 @@ class Parser:
         page = "logout.html"
         self._get(self.url, page)
 
-    def user_info(self) -> UserInformation:
+    def user_info(self) -> Any:
+        self._login()
         html = self._page_info()
-        table = html.find('tbody').find_all('td')
-        subscriber = table[0].find_next('td').find_next('td')
-        address = table[1].find_next('td').find_next('td')
-        living_space = table[2].find_next('td').find_next('td')
-        total_space = table[3].find_next('td').find_next('td')
-        ownership = table[4].find_next('td').find_next('td')
-        phone = table[5].find_next('td').find_next('td')
-        email = table[6].find_next('td').find_next('td')
-        regpeople = table[7].find_next('td').find_next('td')
-        unvpeople = table[8].find_next('td').find_next('td')
-        indebt = table[9].find_next('td').find_next('td')
-        fines = table[10].find_next('td').find_next('td')
-        return UserInformation(subscriber=subscriber.text,
-                               address=address.text,
-                               living_space=int(living_space.text),
-                               total_space=int(total_space.text),
-                               form_of_ownership=ownership.text,
-                               phone=phone.text,
-                               email=email.text,
-                               registered_people=regpeople.text,
-                               unavailable_people=unvpeople.text,
-                               indebtedness=int(indebt.text),
-                               fines=int(fines.text))
+        table = html.find('table', attrs={"cellpadding": "1"}).find_all('td')
+        return UserInformation(subscriber=table[3].text,
+                               address=table[5].text,
+                               living_space=table[7].text,
+                               total_space=table[7].text,
+                               form_of_ownership=table[9].text,
+                               phone=table[11].text,
+                               email=table[13].text,
+                               registered_people=table[15].text,
+                               unavailable_people=table[17].text,
+                               indebtedness=table[19].text)
 
     def print_epd(self, period: str):
         builder = "".join(("/EPDBuilder/epd_",
