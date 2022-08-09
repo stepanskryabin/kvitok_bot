@@ -1,15 +1,10 @@
 from typing import Any
-from selenium.webdriver import Chrome
-from selenium.webdriver import ChromeOptions
-from selenium.webdriver.common.by import By
 from bs4 import BeautifulSoup
-import requests
-from requests.cookies import RequestsCookieJar
+from requests import Session
 
 from src.parser.models import Cookies, UserInformation
-from src.settings.config import BROWSER_DRIVER
-from src.settings.config import BROWSER_TIME
 from src.settings.config import URL
+from src.settings.config import USER_AGENT
 
 
 class Parser:
@@ -18,71 +13,63 @@ class Parser:
                  password: str) -> None:
         self.login = login
         self.password = password
-        self.options = ChromeOptions()
-        self.options.headless = True
-        self.browser = Chrome(executable_path=BROWSER_DRIVER,
-                              options=self.options)
-        self.browser.implicitly_wait(BROWSER_TIME)
+        self.session = Session()
         self.url = URL
+        self.uri = "".join((self.url, "cabinet.html"))
         self.session_id = None
         self.soup = BeautifulSoup
         self.epd = None
-        self.cookies = Cookies()
+        self.cookies = None
+        self.session.headers.update({"User-Agent": USER_AGENT})
+        self._login()
 
     def _content(self, html) -> BeautifulSoup:
         return self.soup(html, 'lxml')
 
-    def _get(self, url, page) -> None:
-        uri = "".join((url, page))
-        self.browser.get(uri)
+    def _post(self,
+              payload: dict,
+              page: str | None = None) -> Session:
+        if page is None:
+            return self.session.post(self.url, data=payload)
+        else:
+            return self.session.post(self.url,
+                                     params={"page": page},
+                                     data=payload)
 
     def _login(self) -> Cookies:
-        login_xpath = "//input[@type='submit']"
-        page = "cabinet.html"
-        url = "".join((self.url, page))
-        self.browser.get(url)
-        self.browser.find_element(by=By.CSS_SELECTOR,
-                                  value='[name="username"]').clear()
-        self.browser.find_element(by=By.CSS_SELECTOR,
-                                  value='[name="username"]').send_keys(self.login)
-        self.browser.find_element(by=By.CSS_SELECTOR,
-                                  value='[name="password"]').clear()
-        self.browser.find_element(by=By.CSS_SELECTOR,
-                                  value='[name="password"]').send_keys(self.password)
-        self.browser.find_element(by=By.XPATH,
-                                  value=login_xpath).click()
-        cookies = self.browser.get_cookie('SESSIONID')
-        self.cookies.domain = cookies.get('domain')
-        self.cookies.http_only = cookies.get('httpOnly')
-        self.cookies.name = cookies.get('name')
-        self.cookies.path = cookies.get('path')
-        self.cookies.secure = cookies.get('secure')
-        self.cookies.value = cookies.get('value')
+        auth = {"username": self.login,
+                "password": self.password}
+        login = self.session.post(self.uri, data=auth)
+        self.cookies = login.cookies
+        self.login_result = login.status_code
 
     def _page_info(self) -> BeautifulSoup:
-        page = "cabinet.html?page=info"
-        self._get(self.url, page)
-        return self._content(self.browser.page_source)
+        page = "info"
+        result = self.session.get(self.uri, params={"page": page})
+        if result.apparent_encoding == 'windows-1251':
+            result.encoding = "cp1251"
+        return self._content(result.text)
 
-    def _page_counters(self):
-        page = "cabinet.html?page=counters"
-        self._get(self.url, page)
+    def _page_counters(self) -> BeautifulSoup:
+        page = "counters"
+        result = self._get(self.url, page)
+        return self._content(result.text)
 
     def _page_printepd(self) -> BeautifulSoup:
-        page = "cabinet.html?page=printepd"
+        page = "printepd"
         self._get(self.url, page)
         return self._content(self.browser.page_source)
 
     def _page_pays_history(self):
-        page = "cabinet.html?page=pays_history"
+        page = "pays_history"
         self._get(self.url, page)
 
     def _page_nach_diagramm(self):
-        page = "cabinet.html?page=nach_diagramm"
+        page = "nach_diagramm"
         self._get(self.url, page)
 
     def _page_epd_delivery(self):
-        page = "cabinet.html?page=epd_delivery"
+        page = "epd_delivery"
         self._get(self.url, page)
 
     def _page_logout(self):
@@ -90,7 +77,8 @@ class Parser:
         self._get(self.url, page)
 
     def user_info(self) -> Any:
-        self._login()
+        if self.login_result != '200':
+            self._login()
         html = self._page_info()
         table = html.find('table', attrs={"cellpadding": "1"}).find_all('td')
         return UserInformation(subscriber=table[3].text,
@@ -111,10 +99,4 @@ class Parser:
                           period,
                           ".pdf"))
         file_url = "".join((self.url, builder))
-        jar = RequestsCookieJar()
-        jar.set(name=self.cookies.name,
-                value=self.cookies.value,
-                domain=self.cookies.domain,
-                path=self.cookies.path)
-        self.epd = requests.get(file_url, cookies=jar)
-        self.epd.content
+        self.epd = self.session.get(file_url, cookies=self.cookies)
