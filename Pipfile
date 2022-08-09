@@ -5,7 +5,6 @@ name = "pypi"
 
 [packages]
 pytelegrambotapi = "==4.6.1"
-selenium = "==4.3.0"
 beautifulsoup4 = "==4.11.1"
 lxml = "==4.9.1"
 loguru = "==0.6.0"
