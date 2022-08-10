@@ -23,3 +23,10 @@ class UserInformation:
     registered_people: str | None = field(default=None)
     unavailable_people: str | None = field(default=None)
     indebtedness: str | None = field(default=None)
+
+
+@dataclass
+class PaysHistory:
+    data_income: str | None = field(default=None)
+    amount: str | None = field(default=None)
+    pay_agent: str | None = field(default=None)
