@@ -11,6 +11,7 @@ loguru = "==0.6.0"
 python-dotenv = "==0.20.0"
 requests = "==2.28.1"
 aiohttp = "==3.8.1"
+ghostscript = "*"
 
 [dev-packages]
 mypy = "*"
