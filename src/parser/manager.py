@@ -3,6 +3,8 @@ from typing import Any
 from bs4 import BeautifulSoup
 from requests import Session
 from requests import Response
+import locale
+import ghostscript
 
 from src.parser.models import UserInformation, PaysHistory
 from src.settings.config import URL
@@ -11,6 +13,20 @@ from src.settings.config import USER_AGENT
 
 class LoginError(ValueError):
     pass
+
+
+def convert_pdf(file_name: str):
+    gs_outputfile = "".join(("-sOutputFile=", file_name))
+    gs_inputfile = file_name
+    args = ["-sDEVICE=pdfwrite",
+            "-dNOPAUSE",
+            "-dBATCH",
+            "-dSAFER",
+            gs_outputfile,
+            gs_inputfile]
+    encoding = locale.getpreferredencoding()
+    args = [a.encode(encoding) for a in args]
+    ghostscript.Ghostscript(*args)
 
 
 class Parser:
@@ -113,14 +129,16 @@ class Parser:
                            "EPDBuilder/",
                             filename))
         try:
-            with open(filename, 'xb') as pdf_file:
+            with open(filename, 'xb') as pdf:
                 buffer = self.session.get(epd_link)
                 buffer.encoding = "cp1251"
-                pdf_file.write(buffer.content)
+                pdf.write(buffer.content)
         except Exception:
             return Path(filename)
         else:
-            return Path(filename).as_posix()
+            pdf_file = Path(filename).as_posix()
+            convert_pdf(file_name=pdf_file)
+            return pdf_file
 
     def logout(self):
         result = self._logout()
