@@ -114,7 +114,9 @@ class Parser:
                             filename))
         try:
             with open(filename, 'xb') as pdf_file:
-                pdf_file.write(self.session.get(epd_link).content)
+                buffer = self.session.get(epd_link)
+                buffer.encoding = "cp1251"
+                pdf_file.write(buffer.content)
         except Exception:
             return Path(filename)
         else:
