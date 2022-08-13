@@ -64,14 +64,11 @@ class Parser:
         return self.soup(html, 'lxml')
 
     def _post(self,
-              payload: dict,
-              page: str | None = None) -> Session:
-        if page is None:
-            return self.session.post(self.url, data=payload)
-        else:
-            return self.session.post(self.url,
-                                     params={"page": page},
-                                     data=payload)
+              payload: dict) -> BeautifulSoup:
+        html = self.session.post(self.uri, data=payload)
+        if html.apparent_encoding == 'windows-1251':
+            html.encoding
+        return self._content(html.text)
 
     def _is_success(self, html: str) -> bool:
         page = self._content(html)
@@ -82,9 +79,10 @@ class Parser:
             return False
 
     def _login(self) -> Response:
-        auth = {"username": self._username,
-                "password": self._password}
-        login = self.session.post(self.uri, data=auth)
+        payload = {"username": self._username,
+                   "password": self._password,
+                   "Page": ""}
+        login = self.session.post(self.uri, data=payload)
         self.session.cookies.update(login.cookies)
         return login
 
@@ -98,16 +96,6 @@ class Parser:
         page = "logout.html"
         uri = "".join((self.url, page))
         return self.session.get(uri)
-
-    # FIXME: доработать
-    def pay_info(self) -> Any:
-        html = self._get_page(page_name="pays_history")
-        table = html.find("table",
-                          attrs={"class": "table plinfo"})
-        td = table.find('tbody').find_all('td')
-        return PaysHistory(data_income=td[0].text,
-                           amount=td[1].text,
-                           pay_agent=td[2].text)
 
     def user_info(self) -> Any:
         html = self._get_page(page_name="info")
@@ -139,6 +127,20 @@ class Parser:
             pdf_file = Path(filename).as_posix()
             convert_pdf(file_name=pdf_file)
             return pdf_file
+
+    def pays_history(self,
+                     date_start: str,
+                     date_stop: str) -> Any:
+        payload = {"D1": date_start,
+                   "D2": date_stop,
+                   "Page": "pays_history"}
+        html = self._post(payload)
+        table = html.find("table",
+                          attrs={"class": "table plinfo"})
+        td = table.find('tbody').find_all('td')
+        return PaysHistory(data_income=td[0].text,
+                           amount=td[1].text,
+                           pay_agent=td[2].text)
 
     def logout(self):
         result = self._logout()

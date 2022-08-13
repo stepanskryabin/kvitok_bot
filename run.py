@@ -96,7 +96,8 @@ def check_menu_btn(message: Message,
             app.send_message(chat_id=chat_id, text=info)
             return_menu(message, parser, menu)
         case 'Платежи':
-            pay = parser.pay_info()
+            pay = parser.pays_history(date_start="01.01.2022",
+                                      date_stop="01.08.2022")
             app.send_message(chat_id=chat_id, text=pay)
             return_menu(message, parser, menu)
         case 'Квитанция':
