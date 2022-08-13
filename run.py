@@ -51,10 +51,15 @@ def check_agree(message: Message):
                                text="Выберите компанию:",
                                reply_markup=company_menu)
         app.register_next_step_handler(msg, check_company)
-    else:
+    elif message.text == "Не согласен":
         app.send_message(message.chat.id,
                          text="Пока!",
                          reply_markup=delete_menu)
+    else:
+        msg = app.send_message(message.chat.id,
+                               text="..и ещё разок!?",
+                               reply_markup=delete_menu)
+        app.register_next_step_handler(msg, send_start)
 
 
 def check_company(message: Message):
