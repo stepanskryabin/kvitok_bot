@@ -23,6 +23,8 @@ class UserInformation:
     registered_people: str | None = field(default=None)
     unavailable_people: str | None = field(default=None)
     indebtedness: str | None = field(default=None)
+    indebtedness_info: str | None = field(default=None)
+    fine: str | None = field(default=None)
 
 
 @dataclass

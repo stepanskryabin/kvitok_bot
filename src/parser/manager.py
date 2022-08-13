@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 from bs4 import BeautifulSoup
 from requests import Session
 from requests import Response
@@ -7,7 +7,10 @@ import locale
 import ghostscript
 
 from src.parser.models import UserInformation, PaysHistory
-from src.settings.config import URL
+from src.parser.scope import CompanyName
+from src.settings.config import URL_ZYNOVY
+from src.settings.config import URL_UKCH
+from src.settings.config import URL_UKB
 from src.settings.config import USER_AGENT
 
 
@@ -32,11 +35,19 @@ def convert_pdf(file_name: str):
 class Parser:
     def __init__(self,
                  username: str,
-                 password: str) -> None:
+                 password: str,
+                 company: CompanyName) -> None:
         self._username = username
         self._password = password
         self.session = Session()
-        self.url = URL
+
+        if company == CompanyName.TCO_ZYNOVY:
+            self.url = URL_ZYNOVY
+        elif company == CompanyName.UK_CHEPETSKAYA:
+            self.url = URL_UKCH
+        elif company == CompanyName.UK_BOEVSKAYA:
+            self.url = URL_UKB
+
         self.uri = "".join((self.url, "cabinet.html"))
         self.session_id = None
         self.soup = BeautifulSoup
@@ -100,6 +111,8 @@ class Parser:
     def user_info(self) -> Any:
         html = self._get_page(page_name="info")
         table = html.find('table', attrs={"cellpadding": "1"}).find_all('td')
+        debt = html.find_all('div', attrs={"style": "font-size:70%"})
+        fine = None
         return UserInformation(subscriber=table[3].text,
                                address=table[5].text,
                                living_space=table[7].text,
@@ -109,7 +122,9 @@ class Parser:
                                email=table[13].text,
                                registered_people=table[15].text,
                                unavailable_people=table[17].text,
-                               indebtedness=table[19].text)
+                               indebtedness=table[19].text,
+                               indebtedness_info=debt[1].text,
+                               fine=fine)
 
     def print_epd(self, period: str) -> str:
         filename = "".join(('epd_', self.username, '_', period, '.pdf'))
@@ -127,6 +142,33 @@ class Parser:
             pdf_file = Path(filename).as_posix()
             convert_pdf(file_name=pdf_file)
             return pdf_file
+
+    def set_epd_delivery(self,
+                         email: str,
+                         paper_blank: Literal[0, 1]) -> str:
+        payload = {"email": email,
+                   "paper_blank": paper_blank,
+                   "Page": "EPD_DELIVERY_SET"}
+        html = self._post(payload)
+        msg = html.find('div', attrs={"class": "caption"})
+
+        if msg.p is None:
+            msg = html.find('div', attrs={"class": "errormsg"})
+        return msg.text
+
+    def set_new_password(self,
+                         password: str) -> str:
+        payload = {"pas_old": self._password,
+                   "pass1": password,
+                   "pass2": password,
+                   "Page": "CHANGE_PASSWORD"}
+        html = self._post(payload)
+        msg = html.find('div', attrs={"class": "caption"})
+
+        if msg.p is None:
+            msg = html.find('div', attrs={"class": "errormsg"})
+
+        return msg.text
 
     def pays_history(self,
                      date_start: str,
