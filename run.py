@@ -96,9 +96,11 @@ def check_menu_btn(message: Message,
             app.send_message(chat_id=chat_id, text=info)
             return_menu(message, parser, menu)
         case 'Платежи':
-            pay = parser.pays_history(date_start="01.01.2022",
-                                      date_stop="01.08.2022")
-            app.send_message(chat_id=chat_id, text=pay)
+            pay_history = parser.pays_history(date_start="01.01.2022",
+                                              date_stop="01.08.2022")
+            for pay in pay_history:
+                msg = f"{pay.data_income} - {pay.amount} - {pay.pay_agent}"
+                app.send_message(chat_id=chat_id, text=msg)
             return_menu(message, parser, menu)
         case 'Квитанция':
             epd = parser.print_epd(period="202206")
