@@ -67,7 +67,7 @@ class Parser:
               payload: dict) -> BeautifulSoup:
         html = self.session.post(self.uri, data=payload)
         if html.apparent_encoding == 'windows-1251':
-            html.encoding
+            html.encoding = "cp1251"
         return self._content(html.text)
 
     def _is_success(self, html: str) -> bool:
