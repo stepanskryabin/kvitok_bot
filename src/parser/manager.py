@@ -130,17 +130,21 @@ class Parser:
 
     def pays_history(self,
                      date_start: str,
-                     date_stop: str) -> Any:
+                     date_stop: str) -> list[PaysHistory]:
         payload = {"D1": date_start,
                    "D2": date_stop,
                    "Page": "pays_history"}
         html = self._post(payload)
         table = html.find("table",
                           attrs={"class": "table plinfo"})
-        td = table.find('tbody').find_all('td')
-        return PaysHistory(data_income=td[0].text,
-                           amount=td[1].text,
-                           pay_agent=td[2].text)
+        tr = table.find('tbody').find_all('tr')
+        result = []
+        for element in tr:
+            td = element.find_all('td')
+            result.append(PaysHistory(data_income=td[0].text,
+                                      amount=td[1].text,
+                                      pay_agent=td[2].text))
+        return result
 
     def logout(self):
         result = self._logout()
