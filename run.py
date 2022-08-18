@@ -220,10 +220,14 @@ def check_menu_btn(message: Message,
                                    reply_markup=main_menu)
             app.register_next_step_handler(msg, check_menu_btn, parser)
         case 'История показаний':
+            counters = parser.get_counters()
+            text = f"""ИПУ: {counters.name}
+                          дата передачи: {counters.period}
+                          показания: {counters.old}"""
             msg = app.send_message(chat_id=chat_id,
-                                   text="Главное меню",
+                                   text=text,
                                    reply_markup=main_menu)
-            app.register_next_step_handler(msg, check_menu_btn, parser)
+            return_to_main_menu(message, parser)
         case 'Передать показания':
             msg = app.send_message(chat_id=chat_id,
                                    text="Главное меню",

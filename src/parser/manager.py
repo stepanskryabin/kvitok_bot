@@ -6,7 +6,9 @@ from requests import Response
 import locale
 import ghostscript
 
-from src.parser.models import UserInformation, PaysHistory
+from src.parser.models import UserInformation
+from src.parser.models import PaysHistory
+from src.parser.models import Counters
 from src.parser.scope import CompanyName
 from src.settings.config import URL_ZYNOVY
 from src.settings.config import URL_UKCH
@@ -169,6 +171,45 @@ class Parser:
             msg = html.find('div', attrs={"class": "errormsg"})
 
         return msg.text
+
+    def set_counters(self, value: float) -> str:
+        """Передача показаний ИПУ.
+
+        Args:
+            value (float): текущее показание, в тоннах.
+
+        Returns:
+            str: сообщение о результате.
+        """
+
+        payload = {"usl7p1": value,
+                   "Page": "COUNTERS",
+                   "Mode": "SET"}
+        html = self._post(payload)
+        div = html.find('div', attrs={"class": "errormsg"})
+        try:
+            error = div.text
+        except Exception:
+            error = "Показания переданы"
+        finally:
+            return error
+
+    def get_counters(self) -> Counters:
+        html = self._get_page(page_name="counters")
+        td = html.find('table',
+                       attrs={"class": "table"}).find('tbody').find_all('td')
+        if td[0] is not None:
+            text: str = td[0].text
+            string = text.split("вода")
+            name = "".join((string[0],
+                            "вода",
+                            " ",
+                            string[1]))
+            return Counters(name=name,
+                            period=td[1].text,
+                            old=td[2].text)
+        else:
+            return Counters()
 
     def pays_history(self,
                      date_start: str,

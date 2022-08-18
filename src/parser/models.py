@@ -32,3 +32,10 @@ class PaysHistory:
     data_income: str | None = field(default=None)
     amount: str | None = field(default=None)
     pay_agent: str | None = field(default=None)
+
+
+@dataclass
+class Counters:
+    name: str | None = field(default=None)
+    period: str | None = field(default=None)
+    old: str | None = field(default=None)
